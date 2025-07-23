@@ -1,0 +1,56 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bnmaskutf8", "bnmaskutf8.vcxproj", "{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bnmaskutf8lib", "bnmaskutf8lib\bnmaskutf8lib.vcxproj", "{7124EBB0-4F3D-4667-9671-377E777A1057}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "bnmaskutf8dll", "bnmaskutf8dll\bnmaskutf8dll.vcxproj", "{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{3100E690-40B9-447D-A748-232D3A079015}"
+	ProjectSection(SolutionItems) = preProject
+		manual\bluenoise.html = manual\bluenoise.html
+		bnmaskutf8dll\bluenoisecallback.h = bnmaskutf8dll\bluenoisecallback.h
+		manual\bluenoiseen.html = manual\bluenoiseen.html
+		manual\specclass.html = manual\specclass.html
+		manual\specclassen.html = manual\specclassen.html
+		manual\specdll.html = manual\specdll.html
+		manual\specdllen.html = manual\specdllen.html
+	EndProjectSection
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Debug|x64 = Debug|x64
+		Release|Win32 = Release|Win32
+		Release|x64 = Release|x64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Debug|Win32.Build.0 = Debug|Win32
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Debug|x64.ActiveCfg = Debug|x64
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Debug|x64.Build.0 = Debug|x64
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Release|Win32.ActiveCfg = Release|Win32
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Release|Win32.Build.0 = Release|Win32
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Release|x64.ActiveCfg = Release|x64
+		{C4230F1D-B1CE-4E79-B1F5-C7FA64DEB186}.Release|x64.Build.0 = Release|x64
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Debug|Win32.Build.0 = Debug|Win32
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Debug|x64.ActiveCfg = Debug|x64
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Debug|x64.Build.0 = Debug|x64
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Release|Win32.ActiveCfg = Release|Win32
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Release|Win32.Build.0 = Release|Win32
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Release|x64.ActiveCfg = Release|x64
+		{7124EBB0-4F3D-4667-9671-377E777A1057}.Release|x64.Build.0 = Release|x64
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Debug|Win32.Build.0 = Debug|Win32
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Debug|x64.ActiveCfg = Debug|x64
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Debug|x64.Build.0 = Debug|x64
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Release|Win32.ActiveCfg = Release|Win32
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Release|Win32.Build.0 = Release|Win32
+		{F1919AE0-A1CD-4A79-B1D4-0AEAE17EED0C}.Release|x64.ActiveCfg = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

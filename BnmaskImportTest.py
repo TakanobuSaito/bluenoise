@@ -4,7 +4,7 @@
 # In[3]:
 
 
-get_ipython().run_line_magic('matplotlib', 'inline')
+# get_ipython().run_line_magic('matplotlib', 'inline')
 import cv2
 import matplotlib.pyplot as plt
 import numpy as np
@@ -95,6 +95,7 @@ floydsteinberg2image = bn.floydsteinberg2(graywidth, grayheight, grayscanlinesiz
 floydsteinberg4image = bn.floydsteinberg4(graywidth, grayheight, grayscanlinesize, np.copy(grayimage))
 # 新規ウインドウ作成
 fig = plt.figure(figsize=(12, 15))
+plt.subplots_adjust(hspace=0.6)
 
 # flg全体をX*Yに分割し、plot位置に画像を配置する。
 X = 4
@@ -104,7 +105,7 @@ Y = 2
 imgplot = 1
 ax1 = fig.add_subplot(X, Y, imgplot)
 # タイトルの設定
-ax1.set_title("original image", fontsize=20)
+ax1.set_title("original image", fontsize=10)
 
 plt.imshow(grayimage, cmap = "gray")
 
@@ -112,45 +113,45 @@ plt.imshow(grayimage, cmap = "gray")
 img2plot =  3
 ax2 = fig.add_subplot(X, Y, img2plot)
 # タイトルの設定
-ax2.set_title(" 2 level bluenoise dither",fontsize=20)
+ax2.set_title(" 2 level bluenoise dither",fontsize=10)
 plt.imshow(dither2image, cmap = "gray")
 
 # dither4image の表示
 img2plot =  4
 ax2 = fig.add_subplot(X, Y, img2plot)
 # タイトルの設定
-ax2.set_title(" 4 level bluenoise dither",fontsize=20)
+ax2.set_title(" 4 level bluenoise dither",fontsize=10)
 plt.imshow(dither4image, cmap = "gray")
 
 # dither2imagewhite の表示
 img2plot =  5
 ax2 = fig.add_subplot(X, Y, img2plot)
 # タイトルの設定
-ax2.set_title(" 2 level whitenoise dither",fontsize=20)
+ax2.set_title(" 2 level whitenoise dither",fontsize=10)
 plt.imshow(dither2imagewhite, cmap = "gray")
 
 # dither4imagewhite の表示
 img2plot =  6
 ax2 = fig.add_subplot(X, Y, img2plot)
 # タイトルの設定
-ax2.set_title(" 4 level whitenoise dither",fontsize=20)
+ax2.set_title(" 4 level whitenoise dither",fontsize=10)
 plt.imshow(dither4imagewhite, cmap = "gray")
 
 # floydsteinberg2 の表示
 img2plot =  7
 ax2 = fig.add_subplot(X, Y, img2plot)
 # タイトルの設定
-ax2.set_title("2 level floydsteinberg dither",fontsize=20)
+ax2.set_title("2 level floydsteinberg dither",fontsize=10)
 plt.imshow(floydsteinberg2image, cmap = "gray")
 
 # floydsteinberg4 の表示
 img2plot =  8
 ax2 = fig.add_subplot(X, Y, img2plot)
 # タイトルの設定
-ax2.set_title(" 4 level floydsteinberg dither",fontsize=20)
+ax2.set_title(" 4 level floydsteinberg dither",fontsize=10)
 plt.imshow(floydsteinberg4image, cmap = "gray")
 
-#plt.show() #なくても表示された。
+plt.show()
 
 
 # In[ ]:

@@ -1,0 +1,19 @@
+; bnmaskutf8dll.def : DLL のモジュール パラメーターを宣言します。
+
+LIBRARY
+
+EXPORTS
+    ; 明示的なエクスポートはここへ記述できます
+	sbluenoise
+	bluenoise
+	bluenoiseex
+	getmatrixsize
+	setbluenoisematrix
+	ordereddither2
+	ordereddither4
+	orderedditherline2
+	orderedditherline4
+	ordereddither2white
+	ordereddither4white
+	floydsteinberg2
+	floydsteinberg4

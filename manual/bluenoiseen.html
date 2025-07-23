@@ -1,0 +1,333 @@
+﻿<HTML>
+<HEAD>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<META HTTP-EQUIV="Content-Type" content="text/html; charset=utf-8">
+<TITLE>Blue Noise</TITLE>
+<link rel="stylesheet" type="text/css" href="topics.css">
+</HEAD>
+<BODY>
+<p><mark><b>Ultra-fast Generation and Applications of Blue Noise – A Random-like Sequence with Less Bias than Random Numbers (Not Random)</b></mark></p>
+<div class="header">
+    <ul class="topicmenulists">
+        <li class="topicmenulist"><a href="#section0">Latest Topics on Blue Noise</a></li>
+        <li class="topicmenulist"><a href="#overview">Overview: A Sequence More Uniformly Distributed than Random Numbers</a></li>
+        <li class="topicmenulist"><a href="#section1">Section 1: What is Blue Noise?</a></li>
+        <li class="topicmenulist"><a href="#section2">Section 2: Applications to Date</a></li>
+        <li class="topicmenulist"><a href="#section3">Section 3: Generation Algorithms and Ultra-fast Generation Methods</a></li>
+        <li class="topicmenulist"><a href="#section4">Section 4: Possible Applications</a></li>
+        <li class="topicmenulist"><a href="#section5">Section 5: Class Library Reference and Dynamic Link Library Reference</a></li>
+    </ul>
+</div>
+<div class="main">
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 第0節 --------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="section0">Latest Topics on Blue Noise</h1>
+Blue noise has been used in the printing technique called <b>digital halftoning</b>.<br />
+Since then, blue noise has been applied as an alternative to random numbers in fields such as <b>gambling</b>, <b>gaming</b>, and <b>pathfinding</b>.<br />
+Research after 2020 has reported that using blue noise instead of random numbers for initializing parameters can improve the generation efficiency of <b>generative AI</b>.<br />
+The reference below reports a phenomenon in which image generation using Generative Adversarial Networks (GANs) becomes more efficient when using correlated sequences (blue noise is a type of correlated sequence) rather than purely random numbers.  
+This may be related to the phenomenon where using blue noise in halftoning produces significantly better images than using white noise.<br />
+<br />
+<b>This library provides blue-noise versions of the C++ srand/rand functions and Python's random functions (including numpy). Feel free to try them out.</b><br />
+<br />
+<TABLE border="0" width="320">
+<TR><TH colspan="2">GIF animation comparing white noise and blue noise using the same threshold value<br /></TH></TR>
+<TR>
+<TD align="center"><IMG src="whitenoiseanime.gif" width="256" ALT="White Noise"></TD>
+<TD align="center"><IMG src="bluenoiseanime.gif" width="256" ALT="Blue Noise"></TD>
+</TR>
+<TR>
+<TD align="center">White Noise</TD>
+<TD align="center">Blue Noise</TD>
+</TR>
+</TABLE>
+References:<br />
+Toshihiko Katsuta, *The Science of Randomness*, Asahi Shinsho<br />
+Chapter 3, “Random Futures,” introduces the research of Professor Atsushi Uchida from Saitama University.<br />
+Although blue noise is not explicitly mentioned, there is a discussion on the use of correlated random sequences—where the next number is somewhat related to the previous one (though such sequences might no longer be called random)—in applications like avoiding congestion in communication and traffic.  
+It is suggested that these correlated sequences (with blue noise being one example) may be more suitable than random numbers for such use cases.<br />
+As seen in the above images, when using random numbers (white noise) to select alternative routes for congestion avoidance, the chosen route may be similar to the original one.  
+However, with blue noise, it is guaranteed that the alternative route will be significantly different from the original.<br />
+
+<a href="javascript:history.back();">Back to Top</a><br />
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 概要 ---------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="overview">Overview: Sequences More Uniformly Distributed than Random Numbers</h1>
+<ol>
+<li>Section 1 explains what blue noise is.</li>
+Blue noise is a sequence derived from random numbers and processed to eliminate bias in values.<br />
+In ideal random numbers, there is no correlation between a number and the ones that follow.<br />
+However, blue noise does exhibit correlation—therefore, it is not truly random.<br />
+Nevertheless, to the human eye, blue noise appears more evenly and randomly distributed than random numbers.<br />
+<br />
+<li>Section 2 describes historical applications of blue noise.</li>
+It has mainly been used in printing technology known as "halftoning".<br />
+Halftoning is a technique that expresses grayscale using only black and white, or full color using RGB or CMYK.<br />
+Blue noise has primarily been used in printer drivers and printing hardware circuitry.<br />
+<br />
+<li>Section 3 explains the generation algorithms of blue noise and methods for speeding them up.</li>
+The major drawback of blue noise is the enormous computational cost required to generate the sequences.<br />
+Although pre-generating the sequence is necessary, the time required for generation cannot be ignored.<br />
+Moreover, traditional generation algorithms cannot be parallelized. According to the original paper, computing a 8192×8192 (2^26) sequence would take several months.<br />
+This library introduces a method capable of generating such sequences in a short time.<br />
+<br />
+<li>Section 4 discusses potential future applications of blue noise.</li>
+<br />
+<li>Section 5 is a manual for building and using this library.</li>
+The core is implemented as a C++ class library and is OS-independent.<br />
+A dynamic link library is provided (with bluenoise()/sbluenoise(int seed) functions as replacements for rand()/srand(int seed)), accessible from Python, C#, and other languages. This is implemented for Windows.<br />
+The dynamic link library only serves as a bridge to the core API, so porting to other operating systems is straightforward.<br />
+This library does not depend on any external libraries.<br />
+Both makefiles and Visual Studio project files are included.<br />
+It can be built as either 32-bit or 64-bit, but for generating large matrices (larger than 4096×4096), a 64-bit environment is required.<br />
+</ol>
+<a href="javascript:history.back();">Back to Top</a><br />
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 第１節 -------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="section1">Section 1: What is Blue Noise?</h1>
+<p>Blue noise is <b>not a random number</b>. It is a <b>sequence that is more uniformly and evenly distributed than random numbers</b>, generated through extensive computation based on random numbers.<br />
+While random numbers can be generated almost in real time, blue noise cannot be generated in real time because its generation requires significant computation time.<br />
+Therefore, it is necessary to <b>precompute and prepare an M×N numerical matrix called a blue noise matrix</b>.<br />
+M and N can differ, but extremely large or small aspect ratios may cause problems. Unless there is a specific reason, a square matrix (M = N) is recommended.<br />
+Due to memory constraints, generating a matrix like 16384×8192 is also acceptable.<br />
+<br />
+You might wonder if the same blue noise is always used, but there's no need to worry.<br />
+<b>A portion of a blue noise matrix is still blue noise, and multiple concatenated blue noise sequences also form valid blue noise</b>.<br />
+This makes it easy to implement a mechanism similar to srand(int seed) for random number initialization.<br />
+<br />
+For halftoning on large or high-resolution printers, larger matrices result in better print quality.<br />
+For general use as a substitute for random numbers, smaller matrices like 256×256 to 1024×1024 are usually sufficient.<br />
+<br />
+</p>
+The image on the left shows white noise generated using pseudo-random numbers from a computer.<br />
+The image on the right shows blue noise derived by processing a white noise matrix.<br />
+Both images have the same density.<br />
+<TABLE border="0" width="320">
+<TR><TH colspan="2">Images of White Noise and Blue Noise<br /></TH></TR>
+<TR>
+<TD align="center"><IMG src="something.gif" width="320" ALT="White noise with visible patterns"></TD>
+<TD align="center"><IMG src="nothingBN.gif" width="320" ALT="Blue noise with no visible patterns"></TD>
+</TR>
+<TR>
+<TD align="center">White Noise (rand() function)</TD>
+<TD align="center">Blue Noise (bluenoise() function)</TD>
+</TR>
+</TABLE>
+To the human eye, the distribution of dots in white noise appears biased, creating visible patterns. It resembles the static screen seen on CRT TVs after broadcast ends.<br />
+A magnified portion of the images is shown below.<br />
+<TABLE border="0" width="400">
+<TR>
+<TD align="center"><IMG src="whitenoise.gif" width="200" ALT="White Noise"></TD>
+<TD align="center"><IMG src="bluenoise.gif" width="200" ALT="Blue Noise"></TD>
+</TR>
+<TR>
+<TD align="center" valign="top">White Noise<br />
+A random number sequence generated using the rand function. It appears visually biased and not truly random to human perception.</TD>
+<TD align="center" valign="top">Blue Noise<br />
+Blue noise obtained by processing white noise. It appears visually uniform and unbiased to human perception.</TD>
+</TR>
+</TABLE>
+<br />
+<a href="javascript:history.back();">Back to Top</a><br />
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 第２節 -------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="H1">Section 2: Applications of Blue Noise</h1>
+Blue noise has been used in digital image halftoning.<br />
+Halftoning is a technique developed to print grayscale images using black ink only, or to print full-color images using a few colors of ink.<br />
+In printing with blue noise, it is theoretically possible to achieve high-quality printing by sending just one pixel of image data and as many blue noise values as the number of color channels (planes) to the printer.<br />
+In practice, data is often sent to the printer one line at a time.<br />
+<table border="4">
+<tr>
+<td><img src="umigray.jpg" width="320" alt="Grayscale image (256 levels)" /></td>
+<td><img src="umigrayBN2256x256.gif" width="320" alt="Halftoned image (2 levels)" /></td>
+<td><img src="umigrayBN4256x256.gif" width="320" alt="Halftoned image (4 levels)" /></td>
+</tr>
+<tr>
+<td align="center">Original 256-level grayscale image</td>
+<td align="center">2-level halftoned image</td>
+<td align="center">4-level halftoned image</td>
+</tr>
+</table>
+<p>
+In the printing domain, dithering techniques are used for printing grayscale images using only black and white inks, and for printing color images using CMYK inks with 4 levels each.<br />
+A high-quality dithering method is the <mark>error diffusion method</mark>. It reduces the total error by distributing the quantization error of a pixel to neighboring pixels yet to be processed.<br />
+In the Floyd & Steinberg-style error diffusion method, the error of a pixel is distributed to its right, bottom-left, bottom, and bottom-right neighbors.<br />
+Although it produces high-quality results, it is computationally intensive, algorithmically complex, and difficult to implement in hardware.<br />
+<br />
+In contrast, the <mark>ordered dithering</mark> method compares a pixel's value with a corresponding value in a noise array to determine the output. This method is computationally light and easier to implement in hardware.<br />
+However, when white noise is used in ordered dithering, the result is of lower quality compared to error diffusion.<br />
+<TABLE border="0" width="640">
+<TR>
+<TD align="center"><IMG src="umigray.jpg" width="210" ALT="Original image"></TD>
+<TD align="center"><IMG src="umigrayFS.gif" width="210" ALT="Error diffusion method"></TD>
+<TD align="center"><IMG src="umigrayWN.gif" width="210" ALT="Ordered dithering (using white noise)"></TD>
+</TR>
+<TR>
+<TD align="center" valign="top">Original image</TD>
+<TD align="center" valign="top">Error diffusion</TD>
+<TD align="center">Ordered dithering (using white noise)<br />
+Uses the rand function (pseudo-random numbers). The image appears visually noisy and unpleasant.</TD>
+</TR>
+</TABLE>
+<br />
+By using blue noise instead of white noise, it is possible to build an ordered dithering system that is compact in memory, fast, simple, and high-quality.<br />
+For each pixel, the output value can be determined by comparing it to a corresponding element in the blue noise array.<br />
+<TABLE border="0" width="840">
+<TR>
+<TD align="center"><IMG src="umigray.jpg" width="210" ALT="Original image"></TD>
+<TD align="center"><IMG src="umigrayFS.gif" width="210" ALT="Error diffusion (2 levels)"></TD>
+<TD align="center"><IMG src="umigrayBN2256x256.gif" width="210" ALT="Ordered dithering (blue noise, 2 levels)"></TD>
+<TD align="center"><IMG src="umigrayBN4256x256.gif" width="210" ALT="Ordered dithering (blue noise, 4 levels)"></TD>
+</TR>
+<TR>
+<TD align="center">Original image</TD>
+<TD align="center">Error diffusion (2 levels)</TD>
+<TD align="center">Ordered dithering (blue noise, 2 levels)</TD>
+<TD align="center">Ordered dithering (blue noise, 4 levels)</TD>
+</TR>
+<TR>
+<TD align="center"><IMG src="Parrotsorg.jpg" width="210" ALT="Original image"></TD>
+<TD align="center"><IMG src="ParrotsFSC.gif" width="210" ALT="Error diffusion (4 levels)"></TD>
+<TD align="center"><IMG src="ParrotsBNC.gif" width="210" ALT="Ordered dithering (blue noise, 4 levels)"></TD>
+</TR>
+<TR>
+<TD align="center">Original image</TD>
+<TD align="center">Error diffusion (4 levels)</TD>
+<TD align="center">Ordered dithering (blue noise, 4 levels)</TD>
+</TR>
+</TABLE>
+<br />
+
+<h2>Comparison of Error Diffusion and Blue Noise Methods</h2>
+Error diffusion produces sharp images, but gradient areas tend to appear blotchy.<br />
+The blue noise method introduces slight noise compared to error diffusion, which smooths out gradients due to the presence of noise in those regions.<br />
+To improve the blotchy areas in error diffusion, random noise is sometimes added to the error distribution. As a result, the output becomes visually similar to that of the blue noise method.<br />
+In terms of processing time, the simpler blue noise method is significantly faster. It only requires sequential access to array elements and comparison with pixel values.<br />
+A program to generate threshold matrices for the blue noise method quickly (e.g., a 512×512 matrix in a few seconds) is also provided, allowing customization.<br />
+<br />
+The blue noise generated by this program is used in firmware for special-purpose large-format printers (several meters wide), such as for specialty printing.<br />
+<br />
+In addition to dithering, blue noise can also be used for audio noise reduction.<br />
+<br />
+<h4>Blue noise has the following characteristics:</h4>
+<ol>
+<li>A part of a blue noise matrix is itself valid blue noise.</li>
+<li>A concatenated blue noise matrix is also valid blue noise.</li>
+Even when connecting the left and right edges or the top and bottom edges, no areas of low or high density appear.<br />
+Thanks to these two properties, once a single blue noise sequence is prepared, it becomes extremely easy to generate different sequences each time, much like using a random seed.<br />
+Even when changing the starting index in the blue noise array (matrix), you still get a complete blue noise sequence. Looping from the end back to the beginning still preserves the quality.<br />
+In other words, <b>you can implement the same functionality as a random seed simply by using modular arithmetic for access</b>.<br />
+If the blue noise matrix is as large as 16384×16384, the probability of generating the same sequence with a reused seed is only 1 in 270 million.<br />
+<br />
+<li>That said, the larger the blue noise matrix, the better the quality.</li>
+If the screen size is 4096×2048 and a 32×32 blue noise pattern is tiled, the repetition becomes noticeable.<br />
+<TABLE border="0" width="320">
+<TR>
+<TD align="center"><IMG src="umigrayBN8x8.gif" width="320" ALT="8×8 blue noise"></TD>
+<TD align="center"><IMG src="umigrayBN2256x256.gif" width="320" ALT="256×256 blue noise"></TD>
+</TR>
+<TR>
+<TD align="center">8×8 Blue Noise</TD>
+<TD align="center">256×256 Blue Noise</TD>
+</TR>
+</TABLE>
+If the screen size is 4096×2048, a 256×256 blue noise matrix is generally sufficient. However, using a blue noise matrix larger than 4096×2048 is ideal.<br />
+</ol>
+<a href="javascript:history.back();">Back to Top</a><br />
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 第3節 --------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="section3">Section 3: Generation Algorithm and Ultra-fast Generation Algorithm</h1>
+The traditional algorithm used is the void-and-cluster algorithm.<br />
+It starts from an n×m pixel white noise image. One pixel is repeatedly moved from the highest-density region to the lowest-density region, until no more pixels can be moved.<br />
+<br />
+<TABLE border="0" width="320">
+<TR>
+<TD align="center"><IMG src="whitenoise.gif" width="170" ALT="Start with white noise"></TD>
+<TD align="center"><IMG src="whitenoise1.gif" width="170" ALT="Pixel with highest density"></TD>
+<TD align="center"><IMG src="whitenoise2.gif" width="170" ALT="Pixel with lowest density"></TD>
+<TD align="center"><IMG src="whitenoise3.gif" width="170" ALT="Move"></TD>
+<TD align="center"><IMG src="whitenoise4.gif" width="170" ALT="After movement"></TD>
+</TR>
+<TR>
+<TD align="center"><font size="2"><b>Initial white noise</b></font></TD>
+<TD align="center"><font size="2"><b>Pixel with highest density (red)</b></font></TD>
+<TD align="center"><font size="2"><b>Pixel with lowest density (blue)</b></font></TD>
+<TD align="center"><font size="2"><b>Move</b></font></TD>
+<TD align="center"><font size="2"><b>Result after movement</b></font></TD>
+</TR>
+</TABLE>
+<br />
+Moving a single pixel changes the highest- and lowest-density regions across the entire image, not just locally.<br />
+Until convergence is reached, enormous computation is required—an 8192×8192 image takes about one month to compute, and even larger sizes can take several months to a year.<br />
+Since each pixel movement alters the density distribution, parallelization is not feasible.<br />
+Our high-speed blue noise generation algorithm produces matrices 10 times faster for 256×256 and over 1000 times faster for 16384×16384 compared to the traditional method. The performance gain becomes more significant as the matrix size increases.<br />
+The fast algorithm requires a large amount of memory. The maximum matrix size that can be generated is:<br />
+<ol>
+<li>Grayscale (1 plane): approx. 8192×8192 on a machine with 6 GB RAM.</li>
+<li>Grayscale (1 plane): approx. 16384×16384 on a machine with 16 GB RAM.</li>
+<li>4-plane (CMYK): approx. 8192×8192 on a machine with 8 GB RAM.</li>
+<li>3-plane (RGB): approx. 16384×16384 on a machine with 24 GB RAM.</li>
+</ol>
+For grayscale (1 plane), sizes up to 4096×4096 pixels can be generated with the 32-bit version. For larger sizes or more than 1 plane, the 64-bit version is required.<br />
+Switching between 32-bit and 64-bit versions only requires recompilation and relinking.<br />
+For the Windows version, the only difference in linker options is /MACHINE:X86 for 32-bit and /MACHINE:X64 for 64-bit.<br />
+Processing speed for the 64-bit version (Intel(R) Core(TM) i7-9750H CPU 2.6GHz, 32GB RAM):<br />
+<ol>
+<li>256×256 blue noise: 6.7 seconds</li>
+<li>512×512 blue noise: 7.8 seconds</li>
+<li>1024×1024 blue noise: 59.3 seconds</li>
+<li>2048×2048 blue noise: 429.2 seconds</li>
+<li>4096×4096 blue noise: 2499.0 seconds</li>
+<li>8192×8192 blue noise: 14465.5 seconds</li>
+With our algorithm, a computation 8192×8192 would take several months can now be completed in about 4 hours(1000 times faster).<br />
+</ol>
+<a href="javascript:history.back();">Back to Top</a><br />
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 第４節 -------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="section4">Section 4: Potential Applications</h1>
+<ol>
+<li>Use in game middleware development</li>
+Pseudo-random numbers with some degree of correlation (which may no longer be considered truly random) are used to control character placement and jackpot (gacha) occurrence rates in games.<br />
+They are used to trigger events in a "uniformly irregular" manner—more evenly distributed than typical random numbers.<br />
+One of the key properties of blue noise is that any subset of it is also valid blue noise.<br />
+With random numbers, the average of a small segment may differ significantly from the overall average, unless the segment is large.<br />
+In contrast, any portion of a blue noise sequence—no matter how small—has an average equal to that of the entire sequence.<br />
+This enables stable and balanced control over event probabilities without bias.<br />
+It allows for consistent control of phenomena like consecutive jackpots or consecutive misses in games and gambling scenarios.<br />
+<br />
+For example, with blue noise, outcomes can be made to "feel" random yet controlled: a jackpot occurs once every 11 tries, two jackpots in a row once every 44 tries, and three jackpots in a row once every 176 tries. As a result, it guarantees that there will be no more than 10 consecutive misses.<br />
+Character placement can also be controlled to avoid clustering—or to deliberately induce clustering—using simple threshold comparisons.<br />
+<br />
+<li>According to the reference mentioned earlier, using correlated random numbers for initializing parameters has been shown to improve image generation efficiency in GANs (Generative Adversarial Networks).<br />
+This is an emerging field. No related academic papers have been published yet, and research is currently focused on <b>identifying the conditions under which correlated random numbers are effective</b>.<br />
+</ol>
+<a href="javascript:history.back();">Back to Top</a><br />
+
+<!-- ------------------------------------------------------------------------- -->
+<!-- --------------------------------- 第５節 -------------------------------- -->
+<!-- ------------------------------------------------------------------------- -->
+<h1 id="section5">Section 5: Class Library and Dynamic Link Library Reference</h1>
+<ol>
+<li><a href="specclassen.html">Class Library Reference</a></li>
+<li><a href="specdllen.html">Dynamic Link Library Reference</a></li>
+</ol>
+<a href="javascript:history.back();">Back to Top</a><br />
+
+</div>
+</BODY>
+</HTML>
+
+

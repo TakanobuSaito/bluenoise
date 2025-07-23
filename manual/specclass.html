@@ -1,0 +1,273 @@
+﻿<HTML>
+<HEAD>
+<META NAME="GENERATOR" Content="Microsoft Developer Studio">
+<META HTTP-EQUIV="Content-Type" content="text/html; charset=x-sjis">
+<TITLE>blue noise mask</TITLE>
+</HEAD>
+<BODY>
+<TABLE width="640"><TR><TD>
+目次<BR>
+<OL>
+<LI><A href="#overview">概要</A>
+<LI><A href="#constructor">コンストラクタ</A>
+<LI><A href="#singleplane">シングルプレーンブルーノイズマスク作成</A>
+<LI><A href="#multiplane">マルチプレーンブルーノイズマスク作成</A>
+<LI>ユーティリティ関数その1<BR>
+    <A href="#saveload">インスタンスデータの保存と読み込み</A>
+<LI>ユーティリティ関数その2<BR>
+    <A href="#ordereddither">組織的ディザ法の実行</A>
+<LI>ユーティリティ関数その3<BR>
+    <A href="#floyd">誤差拡散法の実行</A>
+<LI>マトリクス作成高速化<BR>
+    <A href="#fast">高速版の実行</A>
+</OL>
+<HR><!------------------------------------------------------------------------>
+<A NAME="overview"><H2>概要</H2>
+Ulichneyの論文"The void-and-cluster method for dither array generation"に基づいたblue noise法による
+組織的ディザ(ordered dither)のためのマトリクス生成クラス<BR>
+<BR>
+アルゴリズムの流れは以下の通り。<BR>
+<OL>
+<LI>最初にwhite noiseパターンを生成する。
+<LI>void-and-cluster法によってwhite noiseパターンをblue noiseパターンに変換する<BR>
+    以下のような処理を繰り返す。256×256くらいになると10分単位の時間がかかる重い処理である。<BR>
+	ローパスフィルタには、ガウスフィルタを使っている。<BR>
+	<OL type="a">
+	<LI>適当なローパスフィルタによって低周波成分の循環畳み込みを得る<BR>
+	    「循環」でないと、境界部分がおかしくなる。循環畳み込みには、fft→ifftという処理が一般的であるが、
+当ライブラリでは普通の積分処理で済ましている。２回目以降の循環畳み込みに高速アルゴリズムを使っているので問題ない。
+	<LI>低周波成分の最大値にある"1"＝clusterの座標を取得して除く
+	<LI>反転画像を元に適当なローパスフィルタによって低周波成分の循環畳み込みを得る
+	<LI>低周波成分の最大値にある"0"＝voidの座標を取得して"1"に変える
+	<LI>変えられるcluster/void対がなくなるまで繰り返す
+	</OL>
+<LI>blue noiseパターンから組織的ディザ用のマトリクスを生成する<BR>
+    void-and-cluster法以上の時間がかかる重い処理である。<BR>
+</OL>
+大きなマトリクスだと処理時間が長いので、結果をセーブ/ロードするユーティリティ関数が提供される。<BR>
+また、便利のために実際にディザ法を実行するデバッグ用の関数が提供される。<BR>
+<HR><!------------------------------------------------------------------------>
+<A NAME="constructor"><H2>コンストラクタ</H2>
+引数なし。<BR>
+<PRE>
+CBNMask* pbn = new CBNMask();       // コンストラクタ
+.....
+delete pbn;                         // ディストラクタ
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="singleplane"><H2>シングルプレーンブルーノイズマスク作成</H2>
+makebluenoiseメソッドでwidth×heightのブルーノイズマトリクスを作成する<BR>
+<PRE>
+// ブルーノイズマトリクスを作成する
+// 入力
+//  int     width;      マスク幅(単位ピクセル)
+//  int     height;     マスク高さ(単位ピクセル)
+//  int     level;      元画像の１プレーンの階調数(デフォルト値256)
+//  int     ws;         ガウスフィルタウィンドウサイズ(デフォルト値7(7x7のウィンドウ))
+//  double  sigma;      ガウスフィルタの標準偏差(デフォルト値1.5)
+// 戻り値
+//  0....正常終了
+//  負...エラー(errcode.hに記述、MEMORY_SHORTAGE(-1000)エラーのみ)
+int         makebluenoisematrix(int width,int height,int level = 256,int ws = 7,double sigma = 1.5);
+</PRE>
+マトリクスはsizeof(unsigned int) * mwidth * mheightのサイズのバッファとして返す。<BR>
+アクセサによって、列数と行数(makebluenoisematrixの引数に相当)とバッファの先頭アドレスが取得できる。<BR>
+マトリクスの使い方については<A href="#ordereddither">組織的ディザ法の実行</A>を参照のこと。
+<PRE>
+// アクセサ
+int             mgetwidth() {return mwidth;}
+int             mgetheight() {return mheight;}
+unsigned char*	mgetpmask(int no = 0)
+{
+    if(mcomponentnum == 1)
+        return mpmask;
+    else
+        return mppchild[no]->mgetpmask(0);
+}   // mwidth×mheightのマスクを返す
+    // ordered dither時には不要、デバッグ・テスト用のアクセサ
+unsigned int*	mgetpmatrix(int no = 0)
+{
+    if(mcomponentnum == 1)
+        return mpmatrix;
+    else
+        return mppchild[no]->mgetpmatrix(0);
+}       // ordered dither用のマトリクスを返す
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="multiplane"><H2>マルチプレーンブルーノイズマスク作成</H2>
+シングルプレーンのブルーノイズマスクを元に、マルチプレーンのブルーノイズマスクを作成する。
+したがって、makebluenoisematrix後にコールする。<BR>
+全てシングルプレーンと同じパラメータを使う。マルチプレーンのブルーノイズマスクを作成する
+ブルーノイズマトリクスが十分な大きさを持つことが必要(64×64以上が望ましい)。<BR>
+処理時間は、makebluenoisematrix()×プレーン数と同等。プレーン数は最大8まで可能である。<BR>
+9以上だと、余地がないために各プレーンのブルーノイズマスクが重ならないようにするのは
+不可能となる。どうしても9プレーン以上使う場合、ある程度重なるのを承知で別のインスタ
+ンス(ホワイトノイズの乱数のシードが異なっているもの)を作るほかはない。<BR>
+<PRE>
+// 入力
+//  int      componentnum;     プレーン数(RGBなら3、CMYKなら4。最大9まで可能。
+//                             プレーン数が多い場合は128×128や256×256で実行する方が品質が向上する)
+// 戻り値
+//  0....正常終了
+//	負...エラー
+int				mseparatebluenoisematrix(int componentnum);
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="saveload"><H2>インスタンスデータの保存と読み込み</H2>
+makebluenoisematrixの後に、インスタンスデータを保存することができる。インスタンス作成後に
+mloadbnmを呼び出せば、makebluenoisematrix直後の状態に復帰できる。<BR>
+大きいブルーノイズマトリクスの場合、マトリクス作成処理に長時間
+(256×256で約１時間(Pentium-M/1.6GHz))かかるので保存したほうが良い。<BR>
+mclearwork()を実行すると、マトリクス以外のワーク領域が全て解放され、使用メモリが最小限の
+状態でディザ法を実行することができる。<BR>
+<BR>
+<PRE>
+// 途中経過save/load
+// 入力
+//  char*       filename;   ファイル名
+int             msavebnm(char* filename);
+int             mloadbnm(char* filename);
+void			mclearwork();
+</PRE>
+サンプルプログラム<BR>
+<PRE>
+// 256×256マトリクスの作成
+CBNMask* pbn = new CBNMask();       // コンストラクタ
+int i1 = pbn->makebluenoisematrix(256,256);
+if(i1 < 0) {
+    delete pbn;
+    エラー処理;
+}
+i1 = pbn->msavebnm("c:\tmp\256x256.bnm");
+if(i1 < 0) {
+    delete pbn;
+    エラー処理;
+}
+delete pbn;                         // ディストラクタ
+// あとで利用
+CBNMask* pbn = new CBNMask();       // コンストラクタ
+int i1 = pbn->mloadbnm("c:\\tmp\\256x256.bnm");
+if(i1 < 0) {
+    delete pbn;
+    エラー処理;
+}
+.....
+delete pbn;                         // ディストラクタ
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="ordereddither"><H2>組織的ディザ法の実行</H2>
+デバッグ用ユーティリティ。<BR>
+<PRE>
+// 1...組織的ディザユーティリティ
+// 生成したマトリクスを使ってordered ditherを実行する
+//     (通常は、アプリケーション側でマトリクスを取得して、diteringを実行する)
+// 入力
+// 画像は、１プレーン分の画像(256階調画像)
+//  int             no;             使用するマスクのプレーン番号(0～プレーン数-1)を指定
+//                                  同じプレーン番号を指定するとdot-on-dotのブルーノイズマトリクス処理となる
+//                                  RGBの場合、Rを0、Gを1、Bを2とは限らず好きな組み合わせでよい。
+//  int             width;          画像の幅(単位ピクセル)
+//  int             height;         画像の高さ(単位ピクセル)
+//  int             scanlinesize1;  画像の１ラインのバイト数
+//  unsigned char*  pdata1;         256階調画像
+//  int             scanlinesize2;  出力2/4階調画像の１ラインのバイト数
+// 出力
+//  unsigned char*  pdata2;         2/4階調画像
+//                                  2階調では(0/255)、4階調では(0/85/170/255)で返す。
+//                                  ライブラリは、１プレーン256階調に限定していないが、これはデバッグ用なので手抜き
+void            mordereddither2(int no,int width,int height,int scanlinesize1,unsigned char* pdata1,
+                        int scanlinesize2,unsigned char* pdata2);
+void            mordereddither4(int no,int width,int height,int scanlinesize1,unsigned char* pdata1,
+                        int scanlinesize2,unsigned char* pdata2);
+// 2...組織的ディザユーティリティ
+//     1行単位で処理するバージョン
+// 入力
+//   int            y;               行番号
+//   その他の引数は、mordereddither2/mordereddither4に同じ
+void			morderedditherline2(int no,int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+void			morderedditherline4(int no,int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+</PRE>
+２階調の場合のソース<BR>
+<PRE>
+void CBNMask::mordereddither2(int no,int width,int height,int scanlinesize1,unsigned char* pdata1,
+						int scanlinesize2,unsigned char* pdata2)
+{
+    if(mcomponentnum == 1) {
+        int            total = mwidth * mheight;
+        for(int i = 0 ; i < height ; i++) {
+            unsigned char*  ps1 = pdata1 + scanlinesize1 * i;
+            unsigned char*  ps2 = pdata2 + scanlinesize2 * i;
+            int             y = i % mheight;
+            unsigned int*   ps3 = mpmatrix + mwidth * y;
+            for(int j = 0 ; j < width ; j++,ps1++,ps2++) {
+                int            x = j % mwidth;
+                // マトリクスの値以上(しきい値以上)
+                if(ps3[x] <= *ps1) {
+                    *ps2 = 255;
+                }
+                else {
+                    *ps2 = 0;
+                }
+            }
+        }
+    }
+    else {
+        mppchild[no]->mordereddither2(0,width,height,scanlinesize1,pdata1,scanlinesize2,pdata2);
+    }
+}
+</PRE>
+
+<HR><!------------------------------------------------------------------------>
+<A NAME="floyd"><H2>誤差拡散法の実行</H2>
+画質や速度を比較するための誤差拡散プログラム<BR>
+<PRE>
+// 品質、速度比較用の誤差拡散プログラム
+// Floyd & Steinberg方式
+// 入力
+// 画像は、１プレーン分の画像(256階調画像専用)
+// RGBの場合、各プレーンに対して処理を３回行なう
+//  int             width;          画像の幅(単位ピクセル)
+//  int             height;         画像の高さ(単位ピクセル)
+//  int             scanlinesize1;  画像の１ラインのバイト数
+//  unsigned char*  pdata1;         256階調画像
+//  float*          pdata2;         計算用のワークエリア sizeof(float) * width * heightバイト必要
+// 出力
+//  unsigned char*  pdata3;         2/4階調画像
+void            mfloydsteinberg2(int width,int height,int scanlinesize1,unsigned char* pdata1,float* pdata2,unsigned char* pdata3);
+void            mfloydsteinberg4(int width,int height,int scanlinesize1,unsigned char* pdata1,float* pdata2,unsigned char* pdata3);
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="fast"><H2>高速版の実行</H2>
+マトリクス作成を高速化した高速版を実行するには、基本的には以下の点を変えるだけである。<BR>
+<PRE>
+CBNMask* pbn = new CBNMask();       // コンストラクタ
+↓
+CBNMaskFast* pbn = new CBNMaskFast();       // コンストラクタ
+</PRE>
+高速化版は、従来のものと比較して、10倍から1000倍の速度でマトリクスを作成する。速度向上比率は
+マトリクスサイズが大きくなるほど顕著になる。<BR>
+void-and-cluster法で、一回のピクセル移動があるたびに、計算対象の状態が変化するため、残念ながら計算を並列化することはできない。<br />
+例えば、16384×16384のマトリクスで、void-and-cluster論文準拠の方法では数年～数十年かかる計算が、半日以内に完了する(物理メモリサイズが足りている場合)。<br />
+作成可能な最大マトリクスサイズは、<BR>
+<UL>
+<LI>8プレーンの場合、12Gバイトメモリのマシンで8192×8192程度。 2^26<BR>
+<LI>4プレーンの場合、8Gバイトメモリのマシンで8192×8192程度。 2^26<BR>
+<LI>グレイスケールの場合、6Gバイトメモリのマシンで8192×8192程度。 2^26<BR>
+<LI>グレイスケールの場合、16Gバイトメモリのマシンで16384×16384程度。2^28<BR>
+<LI>3プレーンの場合、24Gバイトメモリのマシンで16384×16384程度。<BR>
+</UL>
+マトリクスサイズは別に2のべき乗である必要はないので、適宜搭載メモリ量にあわせてマトリクスサイズを調節すると
+よい。また、高速化版でも8192×8192の1プレーンのマトリクス作成では数時間を要するので覚悟が必要となる。<BR>
+複数プレーンのマトリクス作成のマルチスレッド化は、各プレーンにおいて異なるワーク領域を取得する余裕が
+無いので今回は見送った。<BR>
+<br />
+マトリクスを保存するには、1要素あたり4バイトの領域が必要となる。乱数ではないが規則性の小さい数列なのでファイル圧縮の効果は小さい。<br />
+8192×8192のマトリクスのファイルサイズは256Mバイト。16384×16384のマトリクスのファイルサイズは1Gバイトとなる。<br />
+<br />
+高速化処理のために膨大なメモリを必要とするため、プレーン分割をする場合は、makebluenoisematrix API後、
+mseparatebluenoisematrix API前に、mclearwork APIを使って結果以外のワーク領域を解放していくと多少余裕が
+生まれる。内部でもワーク領域は適宜解放、取得を繰り返して可能な限りメモリ使用量を減らしている。<BR>
+<BR>
+</TD></TR></TABLE>
+</BODY>
+</HTML>

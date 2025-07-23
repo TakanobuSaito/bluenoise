@@ -1,0 +1,267 @@
+﻿<HTML>
+<HEAD>
+<META NAME="GENERATOR" Content="Microsoft Developer Studio">
+<META HTTP-EQUIV="Content-Type" content="text/html; charset=x-sjis">
+<TITLE>blue noise mask</TITLE>
+</HEAD>
+<BODY>
+<TABLE width="640"><TR><TD>
+Table of Contents<BR>
+<OL>
+<LI><A href="#overview">Overview</A>
+<LI><A href="#constructor">Constructor</A>
+<LI><A href="#singleplane">Single-Plane Blue Noise Mask Creation</A>
+<LI><A href="#multiplane">Multi-Plane Blue Noise Mask Creation</A>
+<LI>Utility Functions Part 1<BR>
+    <A href="#saveload">Saving and Loading Instance Data</A>
+<LI>Utility Functions Part 2<BR>
+    <A href="#ordereddither">Executing Ordered Dithering</A>
+<LI>Utility Functions Part 3<BR>
+    <A href="#floyd">Executing Error Diffusion</A>
+<LI>Matrix Generation Optimization<BR>
+    <A href="#fast">Executing Optimized Version</A>
+</OL>
+<HR><!------------------------------------------------------------------------>
+<A NAME="overview"><H2>Overview</H2>
+A matrix generation class for ordered dithering using the blue noise method, based on Ulichney's paper "The void-and-cluster method for dither array generation".<BR>
+<BR>
+The algorithm flow is as follows:<BR>
+<OL>
+<LI>Initially, generate a white noise pattern.
+<LI>Convert the white noise pattern into a blue noise pattern using the void-and-cluster method.<BR>
+    The following process is repeated. For a size of about 256ﾃ・56, this is a computationally intensive process taking tens of minutes.<BR>
+    A Gaussian filter is used as the low-pass filter.<BR>
+    <OL type="a">
+    <LI>Obtain the cyclic convolution of low-frequency components using an appropriate low-pass filter.<BR>
+        If it is not "cyclic," the boundary areas will become inconsistent. Cyclic convolution is commonly processed with fft竊段fft; however,
+        this library simplifies it with standard integral processing. A fast algorithm is used for subsequent cyclic convolutions, so there are no issues.
+    <LI>Obtain the coordinates of the "1" (cluster) with the maximum low-frequency component and remove it.
+    <LI>Using the inverted image, obtain the cyclic convolution of low-frequency components with an appropriate low-pass filter.
+    <LI>Obtain the coordinates of the "0" (void) with the maximum low-frequency component and change it to "1".
+    <LI>Repeat until there are no more pairs of clusters/voids that can be modified.
+    </OL>
+<LI>Generate a matrix for ordered dithering from the blue noise pattern.<BR>
+    This is even more computationally intensive than the void-and-cluster method.<BR>
+</OL>
+For large matrices, processing time is long, so utility functions are provided for saving/loading results.<BR>
+Additionally, debugging functions are provided for executing the dithering method conveniently.<BR>
+
+<HR><!------------------------------------------------------------------------>
+<A NAME="constructor"><H2>Constructor</H2>
+No arguments.<BR>
+<PRE>
+CBNMask* pbn = new CBNMask();       // Constructor
+.....
+delete pbn;                         // Destructor
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="singleplane"><H2>Single-Plane Blue Noise Mask Creation</H2>
+The makebluenoise method creates a blue noise matrix with dimensions width ﾃ・height.<BR>
+<PRE>
+// Create a blue noise matrix
+// Input
+//  int     width;      Mask width (in pixels)
+//  int     height;     Mask height (in pixels)
+//  int     level;      Number of gradation levels in one plane of the source image (default value: 256)
+//  int     ws;         Gaussian filter window size (default value: 7 (7x7 window))
+//  double  sigma;      Standard deviation of the Gaussian filter (default value: 1.5)
+// Return Value
+//  0....Success
+//  Negative...Error (as described in errcode.h; only MEMORY_SHORTAGE (-1000) error is handled)
+int         makebluenoisematrix(int width,int height,int level = 256,int ws = 7,double sigma = 1.5);
+</PRE>
+The matrix is returned as a buffer with a size of sizeof(unsigned int) * mwidth * mheight.<BR>
+Using accessors, you can obtain the number of rows and columns (corresponding to the arguments of makebluenoisematrix) and the starting address of the buffer.<BR>
+For usage of the matrix, refer to <A href="#ordereddither">Executing Ordered Dithering</A>.
+<PRE>
+// Accessors
+int             mgetwidth() {return mwidth;}
+int             mgetheight() {return mheight;}
+unsigned char*  mgetpmask(int no = 0)
+{
+    if(mcomponentnum == 1)
+        return mpmask;
+    else
+        return mppchild[no]->mgetpmask(0);
+}   // Returns a mask of mwidth ﾃ・mheight
+    // Not needed for ordered dithering; provided for debugging/testing purposes
+unsigned int*   mgetpmatrix(int no = 0)
+{
+    if(mcomponentnum == 1)
+        return mpmatrix;
+    else
+        return mppchild[no]->mgetpmatrix(0);
+}       // Returns a matrix for ordered dithering
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="multiplane"><H2>Multi-Plane Blue Noise Mask Creation</H2>
+Create a multi-plane blue noise mask based on a single-plane blue noise mask.
+This should be called after makebluenoisematrix.<BR>
+All parameters are the same as those used for a single plane. The blue noise matrix must be sufficiently large (preferably 64ﾃ・4 or larger).<BR>
+Processing time is equivalent to makebluenoisematrix() ﾃ・the number of planes. A maximum of 8 planes is supported.<BR>
+If more than 9 planes are required, it becomes impossible to avoid overlapping blue noise masks for each plane.
+If 9 or more planes must be used, a separate instance (with a different random seed for white noise) must be created, accepting some overlap.<BR>
+<PRE>
+// Input
+//  int      componentnum;     Number of planes (3 for RGB, 4 for CMYK, maximum 9).
+//                             For a larger number of planes, using 128ﾃ・28 or 256ﾃ・56 improves quality.
+// Return Value
+//  0....Success
+//  Negative...Error
+int             mseparatebluenoisematrix(int componentnum);
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="saveload"><H2>Saving and Loading Instance Data</H2>
+After makebluenoisematrix, instance data can be saved. By calling mloadbnm after instance creation,
+you can restore the state immediately after makebluenoisematrix.<BR>
+For large blue noise matrices, matrix generation can take a long time
+(approximately 1 hour for 256ﾃ・56 on a Pentium-M/1.6GHz), so saving the results is recommended.<BR>
+When mclearwork() is executed, all work areas other than the matrix are released, minimizing memory usage for dithering execution.<BR>
+<BR>
+<PRE>
+// Save/Load intermediate results
+// Input
+//  char*       filename;   File name
+int             msavebnm(char* filename);
+int             mloadbnm(char* filename);
+void            mclearwork();
+</PRE>
+Sample Program<BR>
+<PRE>
+// Create a 256ﾃ・56 matrix
+CBNMask* pbn = new CBNMask();       // Constructor
+int i1 = pbn->makebluenoisematrix(256,256);
+if(i1 < 0) {
+    delete pbn;
+    // Error handling
+}
+i1 = pbn->msavebnm("c:\tmp\256x256.bnm");
+if(i1 < 0) {
+    delete pbn;
+    // Error handling
+}
+delete pbn;                         // Destructor
+// Use later
+CBNMask* pbn = new CBNMask();       // Constructor
+int i1 = pbn->mloadbnm("c:\\tmp\\256x256.bnm");
+if(i1 < 0) {
+    delete pbn;
+    // Error handling
+}
+.....
+delete pbn;                         // Destructor
+</PRE>
+
+<HR><!------------------------------------------------------------------------>
+<A NAME="ordereddither"><H2>Execution of Ordered Dithering</H2>
+Debug utility.<BR>
+<PRE>
+// 1...Ordered Dither Utility
+// Executes ordered dithering using the generated matrix
+//     (Normally, the application retrieves the matrix and performs dithering)
+// Input
+// The image is a single-plane image (256 grayscale levels)
+//  int             no;             Specifies the plane number of the mask to use (0 to number of planes - 1).
+//                                  Using the same plane number results in dot-on-dot blue noise matrix processing.
+//                                  For RGB, R is not necessarily 0, G is not necessarily 1, B is not necessarily 2; any combination is allowed.
+//  int             width;          Width of the image (in pixels)
+//  int             height;         Height of the image (in pixels)
+//  int             scanlinesize1;  Number of bytes per line of the input image
+//  unsigned char*  pdata1;         256 grayscale image
+//  int             scanlinesize2;  Number of bytes per line of the output 2/4 grayscale image
+// Output
+//  unsigned char*  pdata2;         2/4 grayscale image
+//                                  For 2 levels, returns (0/255); for 4 levels, returns (0/85/170/255).
+//                                  The library is not limited to 256 grayscale levels per plane, but this is simplified for debugging purposes.
+void            mordereddither2(int no,int width,int height,int scanlinesize1,unsigned char* pdata1,
+                        int scanlinesize2,unsigned char* pdata2);
+void            mordereddither4(int no,int width,int height,int scanlinesize1,unsigned char* pdata1,
+                        int scanlinesize2,unsigned char* pdata2);
+// 2...Ordered Dither Utility
+//     Line-by-line processing version
+// Input
+//   int            y;               Line number
+//   Other arguments are the same as for mordereddither2/mordereddither4
+void            morderedditherline2(int no,int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+void            morderedditherline4(int no,int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+</PRE>
+Source code for 2-level dithering<BR>
+<PRE>
+void CBNMask::mordereddither2(int no,int width,int height,int scanlinesize1,unsigned char* pdata1,
+                        int scanlinesize2,unsigned char* pdata2)
+{
+    if(mcomponentnum == 1) {
+        int            total = mwidth * mheight;
+        for(int i = 0 ; i < height ; i++) {
+            unsigned char*  ps1 = pdata1 + scanlinesize1 * i;
+            unsigned char*  ps2 = pdata2 + scanlinesize2 * i;
+            int             y = i % mheight;
+            unsigned int*   ps3 = mpmatrix + mwidth * y;
+            for(int j = 0 ; j < width ; j++,ps1++,ps2++) {
+                int            x = j % mwidth;
+                // If the matrix value is greater than or equal to the pixel value (threshold)
+                if(ps3[x] <= *ps1) {
+                    *ps2 = 255;
+                }
+                else {
+                    *ps2 = 0;
+                }
+            }
+        }
+    }
+    else {
+        mppchild[no]->mordereddither2(0,width,height,scanlinesize1,pdata1,scanlinesize2,pdata2);
+    }
+}
+</PRE>
+
+<HR><!------------------------------------------------------------------------>
+<A NAME="floyd"><H2>Execution of Error Diffusion</H2>
+Error diffusion program for comparing image quality and speed.<BR>
+<PRE>
+// Error diffusion program for quality and speed comparison
+// Floyd & Steinberg method
+// Input
+// The image is a single-plane image (256 grayscale levels only).
+// For RGB, process each plane three times.
+//  int             width;          Width of the image (in pixels)
+//  int             height;         Height of the image (in pixels)
+//  int             scanlinesize1;  Number of bytes per line of the image
+//  unsigned char*  pdata1;         256 grayscale image
+//  float*          pdata2;         Work area for computation, requires sizeof(float) * width * height bytes
+// Output
+//  unsigned char*  pdata3;         2/4 grayscale image
+void            mfloydsteinberg2(int width,int height,int scanlinesize1,unsigned char* pdata1,float* pdata2,unsigned char* pdata3);
+void            mfloydsteinberg4(int width,int height,int scanlinesize1,unsigned char* pdata1,float* pdata2,unsigned char* pdata3);
+</PRE>
+<HR><!------------------------------------------------------------------------>
+<A NAME="fast"><H2>Execution of the High-Speed Version</H2>
+To execute the high-speed version with accelerated matrix creation, simply make the following change.<BR>
+<PRE>
+CBNMask* pbn = new CBNMask();       // Constructor
+竊・
+CBNMaskFast* pbn = new CBNMaskFast();       // Constructor
+</PRE>
+The high-speed version creates matrices 10 to 1000 times faster than the conventional one. The speed improvement becomes more pronounced with larger matrix sizes.<BR>
+In the void-and-cluster method, the calculation state changes with every pixel movement, so unfortunately, parallelization of calculations is not possible.<br />
+For example, calculations for a 16384ﾃ・6384 matrix using the method in the void-and-cluster paper, which would take several years to decades, can be completed within half a day (assuming sufficient physical memory).<br />
+The maximum matrix sizes that can be created are as follows:<BR>
+<UL>
+<LI>For 8 planes, approximately 8192ﾃ・192 on a machine with 12GB of memory. 2^26<BR>
+<LI>For 4 planes, approximately 8192ﾃ・192 on a machine with 8GB of memory. 2^26<BR>
+<LI>For grayscale, approximately 8192ﾃ・192 on a machine with 6GB of memory. 2^26<BR>
+<LI>For grayscale, approximately 16384ﾃ・6384 on a machine with 16GB of memory. 2^28<BR>
+<LI>For 3 planes, approximately 16384ﾃ・6384 on a machine with 24GB of memory.<BR>
+</UL>
+Matrix sizes do not need to be powers of two, so adjust the size according to the available memory. Even with the high-speed version, creating an 8192ﾃ・192 matrix for a single plane takes several hours, so be prepared.<BR>
+Multithreading for multi-plane matrix creation was not implemented this time due to insufficient resources for obtaining separate work areas for each plane.<BR>
+<br />
+Saving a matrix requires 4 bytes of space per element. Although the numbers are not random, their low regularity results in minimal file compression. <br />
+The file size for an 8192ﾃ・192 matrix is 256MB, and for a 16384ﾃ・6384 matrix, it is 1GB.<br />
+<br />
+Due to the large memory requirements for high-speed processing, when dividing planes, using the mclearwork API after the makebluenoisematrix API but before the mseparatebluenoisematrix API can free up some work areas, allowing for more available memory. The internal process also repeatedly frees and retrieves work areas to minimize memory usage.<BR>
+<BR>
+</TD></TR></TABLE>
+</BODY>
+</HTML>
+

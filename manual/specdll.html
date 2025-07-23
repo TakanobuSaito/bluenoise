@@ -1,0 +1,367 @@
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" >
+<head>
+    <title>動的リンクライブラリリファレンス</title>
+</head>
+<body>
+基本のAPIは4つある。<br />
+乱数発生ライブラリの rand()/srand() の代わりに使う場合は基本APIのみを利用する。<br />
+追加のAPIが４つある。４つとも組織的ディザリングのためのAPIである。<br />
+C++クラスライブラリでは、<br />
+<ol>
+<li>ブルーノイズ発生をコントロールするガウスフィルタのパラメータの設定</li>
+<li>組織的ディザリングをコントロールするための階調数(初期値は256)の変更</li>
+<li>誤差拡散法によるディザリング</li>
+<li>ホワイトノイズによる組織的ディザリング</li>
+</ol>
+など本ライブラリでサポートしていない多数のAPIがある。<br />
+本ライブラリはC++クラスライブラリから重要なエッセンスだけをサポートしたものであるが、ソースを公開しているのでAPIの追加を必要に応じて実施することができる。<br />
+<br />
+基本APIのうち２つは、c/c++標準ライブラリ関数のrand()/srand(int seed)相当の関数bluenoise()/sblunenoise(int seed)である。<br />
+もう一つは、0～RAND_MAXよりも広範囲のbluenoiseを返すblunenoiseex()である。初期状態でも0～65535の範囲のbluenoiseを返すのでblunenoiseよりも高精細である。<br />
+<br />
+bluenoiseex()を多用する場合、ブルーノイズマトリクスのサイズを大きくするための追加APIを利用することができる。<br />
+最大0～0x07ffffffの範囲のブルーノイズを発生する。<br />
+追加APIを呼んだ場合は、ブルーノイズマトリクスは追加APIで指定したフォルダあるファイルを利用する。<br />
+追加APIを呼ばない場合は表のファイルは使われず、あらじめ初期化された256×256サイズの表が使われる。<br /><br />
+<ol>
+<li>srand(int seed)に対応するsblunenoise(int seed)</li>
+ブルーノイズの発生系列を変更する。<br />
+追加APIを呼んだ場合は、初回のbluenoise()/bluenoiseex()/sbluenoise()呼び出し時に、表をファイルから読み込む時間と読み込みメモリが必要となる。<br />
+追加APIを呼ばない場合は、初回呼び出しのオーバーヘッドは無い。<br />
+
+<li>rand()に対応するblunenoise()</li>
+0～RAND_MAXの範囲のブルーノイズを発生する。<br />
+bluenoiseを使う場合は追加APIであるsetblunenoisematrixを呼ぶ必要は無い。<br />
+
+<li>高精細ブルーノイズを発生するblunenoiseex()</li>
+0～size * sizeの範囲のブルーノイズを発生する。<br />
+追加APIを使わないでもbluenoise()APIよりも高精細のブルーノイズを生成する。<br />
+追加APIを使うことで最大0～0x0fffffffの範囲のブルーノイズ系列の取得が可能。<br />
+
+<li>追加API</li>
+多くの人は一回も使わない特殊なAPIである。blunenoiseex()APIを使う場合に、ブルーノイズマトリクスのサイズが大きいほど品質が向上する。<br />
+blunenoise()APIを使う場合、このAPIを生成しても、発生するブルーノイズは0～RAND_MAX(0x7fff)の範囲の粗い数列に過ぎない<br />
+<br />
+ブルーノイズマトリクスという表を利用するため「マトリクス表を保存するフォルダの設定」とマトリクス表のサイズを引数で指定する。<br />
+設定と同時にフォルダに512×512、1024×1024,2048×2048,4096×4096、8192×8192、16384×16384のいずれかのサイズで指定されたマトリクス表を利用する。<br />
+<b>通常の利用では、このAPIの呼び出しは不要である。</b>
+<b>「高精細のブルーノイズが必要である」程度の目的であれば1024×1024程度のブルーノイズで十分である。</b>
+<b>特殊な目的がある場合(A0超の巨大なプリンターで組織的ディザリングを行う、巨大なマトリクスをブルーノイズ系列で初期化するなど)では2048×2048以上のマトリクスを使うが、ファイルサイズやマトリクス読み込み用のメモリが大きくなる。</b>
+<br />
+すでに指定サイズのマトリクス表が、設定したフォルダに無い場合は新規に表を作成する。<br />
+表のファイルサイズは以下の通りである。読み込みメモリのサイズはファイルサイズにほぼ等しい。<br />
+<b>元の256×256サイズの表を使う場合はフォルダ名にNULLあるいは""を設定する。</b><br />
+<table border="1">
+<tr>
+<th>マトリクスサイズ</th><th>bluenoiseex()が発生する値の範囲</th><th>ファイルサイズ</th><th>bluenoise()が発生する値の範囲</th>
+</tr>
+
+<tr>
+<td>256×256</td><td>0～0x0000ffff(0～     65,535)</td><td>埋め込みデータなのでファイルなし</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+
+<tr>
+<td>512×512</td><td>0～0x0003ffff(0～    262,143)</td><td>1メガバイト</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+
+<tr>
+<td>1024×1024</td><td>0～0x000fffff(0～  1,048,575)<br />百万。乱数系列の代用には十分</td><td>4メガバイト</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+
+<tr>
+<td>2048×2048</td><td>0～0x003fffff(0～  4,194,303)</td><td>16メガバイト</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+
+<tr>
+<td>4096×4096</td><td>0～0x00ffffff(0～ 16,777,215)<br />24bitカラー画像の色数</td><td>64メガバイト</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+
+<tr>
+<td>8192×8192</td><td>0～0x03ffffff(0～ 67,108,863)<br />印刷幅8メートルの特殊なプリンタ(国宝のアーカイブ作成用)で唯一の利用実績</td><td>256メガバイト</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+
+<tr>
+<td>16384×16384</td><td>0～0x0fffffff(0～268,435,455)<br />この精度を使っている例はゼロ(CYMK用の8192×8192マトリクス4枚に分割などが考えられる)</td><td>1024メガバイト(1ギガバイト)</td><td>0～0x00007fff(0～32767)</td>
+</tr>
+</table>
+</ol>
+
+<HR><!------------------------------------------------------------------------>
+<h3>DLLのロードと解放</h3>
+各APIの定義は"bluenoisecallback.h"で以下のようになっている。
+<pre>
+///////////////////////////////
+// ブルーノイズ系列のシード設定
+//  int				seed;		seed値
+// 返り値
+//　　負....エラー(INITIALIZE_ERROR...初期化エラー(クラスのインスタンス生成に失敗:メモリ不足))
+typedef int (__stdcall* SBLUENOISE)(int seed);
+extern SBLUENOISE sbluenoise;
+/////////////////////////
+// ブルーノイズ系列の取得(0～RAND_MAX)
+// RAND_MAXは0x7fff(32767)なので粗い
+// 返り値
+//　　負....エラー(INITIALIZE_ERROR...初期化エラー(クラスのインスタンス生成に失敗:メモリ不足))
+//　　ブルーノイズ系列
+typedef int (__stdcall* BLUENOISE)();
+extern BLUENOISE bluenoise;
+/////////////////////////
+// 精細なブルーノイズ系列の取得(0～size*size)
+// ファイルを使わないサイズ(256*256)でも0～65535と細かい
+//   256*  256       0～0x0000ffff(0～     65,536-1)      ファイルを使わない
+//   512*  512       0～0x0003ffff(0～    262,144-1)　　     1Mバイト
+//  1024* 1024       0～0x000fffff(0～  1,048,576-1)         4Mバイト
+//  2048* 2048       0～0x003fffff(0～  4,194,304-1)        16Mバイト
+//  4096* 4096       0～0x00ffffff(0～ 16,777,216-1)        64Mバイト
+//  8192* 8192       0～0x03ffffff(0～ 67,108,864-1)       256Mバイト
+// 16384*16384       0～0x0fffffff(0～268,435,456-1)      1024Mバイト(1Gバイト)
+// 返り値
+//　　負....エラー(INITIALIZE_ERROR...初期化エラー(クラスのインスタンス生成に失敗:メモリ不足))
+//　　ブルーノイズ系列
+typedef int (__stdcall* BLUENOISEEX)();
+extern BLUENOISEEX bluenoiseex;
+/////////////////////////
+// ブルーノイズ マトリクス保存・読込フォルダの設定、マトリクスサイズの設定
+// 通常(0～RAND_MAX)の範囲のブルーノイズの生成では設定しない
+// bluenoiseex()で精細なブルーノイズを取得する目的がある場合に設定する
+// 入力
+//    const char*	pfolder;	マトリクスファイルの存在する/を生成するフォルダ名
+//                              NULLあるいは""を指す場合は256×256サイズの組み込みマトリクスを利用する
+//    int           size;		マトリクスサイズ(512/1024/2048/4096/8192/16384)
+//                              1024の場合、1024×1024のブルーノイズマトリクスを生成する。ファイルサイズは4メガバイト
+// 返り値
+//　　負....エラー(INITIALIZE_ERROR...初期化エラー(クラスのインスタンス生成に失敗:メモリ不足))
+//　　負....エラー(FILE_OPEN_ERROR....保存できない、読み込みできない)
+//                (MEMORY_SHORTAGE....メモリ不足)
+// 指定したフォルダのsizexsizeraw.datというファイルを読み込む
+//                   sizeが1024の場合は1024x1024raw.datというファイル名になる
+//                   ファイルが無い場合はファイルを作成する
+//                   sizeが大きくなるほど高品質のbluenoiseを生成する
+typedef int (__stdcall* SETBLUENOISEMATRIX)(const char* pfolder,int size);
+extern SETBLUENOISEMATRIX setbluenoisematrix;
+</pre>
+DLLのロードと解放は以下の通り
+<pre>
+#include "bluenoisecallback.h"
+HINSTANCE bn_dllinstance;		// dllインスタンス
+// DLL エントリーポイント
+SBLUENOISE sbluenoise;
+BLUENOISE bluenoise;
+BLUENOISEEX bluenoiseex;
+SETBLUENOISEMATRIX setbluenoisematrix;
+ORDEREDDITHER2 ordereddither2;
+ORDEREDDITHER4 ordereddither4;
+ORDEREDDITHERLINE2 orderedditherline2;
+ORDEREDDITHERLINE4 orderedditherline4;
+
+{
+    // ....
+    // ロード
+    // gmodulepathには、実行ファイルのパスが入っている。
+    // 実行ファイルのパスに"bluenoisedll.dll"が入っているとする
+	char	filename[FILENAME_MAX];
+	sprintf(filename,"%sbluenoisedll.dll",gmodulepath);
+	bn_dllinstance = LoadLibrary(filename);
+	if(bn_dllinstance == NULL) {
+		char	buffer[512];
+		sprintf(buffer,"DLLﾌｧｲﾙ bluenoisedll.dll のﾛｰﾄﾞに失敗しました");
+		AfxMessageBox(buffer,MB_OK | MB_ICONEXCLAMATION);
+		return(2);
+	}
+	sbluenoise = (SBLUENOISE)GetProcAddress(bn_dllinstance,"sbluenoise");
+	bluenoise = (BLUENOISE)GetProcAddress(bn_dllinstance,"bluenoise");
+	bluenoiseex = (BLUENOISEEX)GetProcAddress(bn_dllinstance,"bluenoiseex");
+	setbluenoisematrix = (SETBLUENOISEMATRIX)GetProcAddress(bn_dllinstance,"setbluenoisematrix");
+	if(sbluenoise == NULL || bluenoise == NULL || bluenoiseex == NULL || setbluenoisematrix == NULL) {
+		char	buffer[512];
+		sprintf(buffer,"DLLﾌｧｲﾙ bluenoisedll.dll(or bluenoiseutf8dll) のﾊﾞｰｼﾞｮﾝが異なります");
+		AfxMessageBox(buffer,MB_OK | MB_ICONEXCLAMATION);
+		FreeLibrary(bn_dllinstance);
+		return(2);		
+	}
+	ordereddither2 = (ORDEREDDITHER2)GetProcAddress(bn_dllinstance,"ordereddither2");
+	ordereddither4 = (ORDEREDDITHER2)GetProcAddress(bn_dllinstance,"ordereddither4");
+	orderedditherline2 = (ORDEREDDITHERLINE2)GetProcAddress(bn_dllinstance,"orderedditherline2");
+	orderedditherline4 = (ORDEREDDITHERLINE4)GetProcAddress(bn_dllinstance,"orderedditherline4");
+	if(ordereddither2 == NULL || ordereddither4 == NULL || orderedditherline2 == NULL || orderedditherline4 == NULL) {
+		char	buffer[512];
+		sprintf(buffer,"DLLﾌｧｲﾙ bluenoisedll.dll(or bluenoiseutf8dll) のﾊﾞｰｼﾞｮﾝが異なります\n");
+		AfxMessageBox(buffer,MB_OK | MB_ICONEXCLAMATION);
+		FreeLibrary(bn_dllinstance);
+		return(2);		
+	}
+    // ....
+    // 解放
+    FreeLibrary(bn_dllinstance);
+}
+</pre>
+<HR><!------------------------------------------------------------------------>
+<h3>rand()/srand(int seed)に対応するAPI</h3>
+rand()に対応するbluenoise()の呼び出しは以下の通り行う。<br />
+同様にrand()に対応するblunnoiseex()を呼び出す場合は、以下の"bluenoise"を"bluenoiseex"に変更するだけである。<br />
+<pre>
+// m_editresultにbluenoise系列を1000個設定してエディットボックス等に表示する
+void CDlgBluenoise::OnBnClickedMakebluenoise100()
+{
+	m_editresult = "";
+	char	buffer[1024];
+	for(int i = 0 ; i < 1000 ; i++) {
+		if(i % 10 == 0) {
+			sprintf(buffer,"(%03d)",i / 10);
+			m_editresult += buffer;
+		}
+		if(i % 10 == 9) {
+			sprintf(buffer,"%10d\r\n",bluenoise());
+		}
+		else {
+			sprintf(buffer,"%10d, ",bluenoise());
+		}
+		m_editresult += buffer;
+	}
+	UpdateData(FALSE);
+}
+</pre>
+新規のマトリクス(通常は、初期サイズである256×256よりも大きいサイズ)setbluenoisematrix()の呼び出しは以下の通り行う。<br />
+setbluenoisematrix()で作ったマトリクスを使うにはbluenoise()ではなくbluenoiseex()を呼び出す。<br />
+<pre>
+// 下記サンプルプログラムにおけるフォルダは"g:/tmp/"であるが、通常は他のフォルダを設定する。<br />
+// m_editsizeには512～16384の範囲の値が入る
+void CDlgBluenoise::OnBnClickedSetsize()
+{
+	UpdateData(TRUE);
+	if(m_editsize == 256) {
+		setbluenoisematrix("",m_editsize);
+	}
+	else {
+		setbluenoisematrix("g:\\tmp\\",m_editsize);
+	}
+	UpdateData(FALSE);
+}
+</pre>
+
+<HR><!------------------------------------------------------------------------>
+<h3>ユーティリティ関数</h3>
+ブルーノイズによる組織的ディザリングを行う<br />
+入力画像の階調数は256階調。プレーン数は最大８(0～7)<br />
+出力画像の階調数は、2階調あるいは4階調となっている<br />
+<br />
+クラスライブラリには、ホワイトノイズによる組織的ディザリングや誤差拡散法によるディザリング機能があるが、動的リンクライブラリではサポートしていない。<br />
+それらの機能を使うには、クラスライブラリを使うか、本ライブラリのソースコードをカスタマイズすれば良い。<br />
+カスタマイズは簡単である。<br />
+<br />
+
+<pre>
+// 1...ordered dither utility
+// do ordered dither (for grayscale image only)
+// for multiplane image(ex. RGB,CMYK), use class library or add API to this library.
+// input
+//	int				width;			image width(pixel)
+//	int				height;			image height(pixel)
+//	int				scanlinesize1;	scanline size(byte count) of one line image
+//	unsigned char*	pdata1;			256 level image
+//	int				scanlinesize2;	scanline size(byte count) of 2 or 4 level image
+// output
+//  unsigned char*	pdata2;			2 or 4 level image(one pixel is one byte)
+//                                  2 level has value(0,255)
+//                                  4 level has value(0,85,170,255)
+// return value
+//　　0>...error(INITIALIZE_ERROR...initialize error(can not make instance of class library : memory shortage)
+//　　     error(FILE_OPEN_ERROR....can not save or load bluenoise matrix data)
+//                (MEMORY_SHORTAGE..memory shortage)
+// this library read "sizexsizeraw.dat" in folder specified by setbluenoisematrix()
+//                   If "size" is 1024, file name is "1024x1024raw.dat"
+//                   If "sizexsizeraw.dat" does not exist, setbluenoisematrix() API genarates the file automatically.
+//                   If value of "size" becomes bigger, quality of dithering image becomes higher.
+typedef int (__stdcall* ORDEREDDITHER2)(int width,int height,int scanlinesize1,unsigned char* pdata1,int scanlinesize2,unsigned char* pdata2);
+extern ORDEREDDITHER2 ordereddither2;
+
+typedef int (__stdcall* ORDEREDDITHER4)(int width,int height,int scanlinesize1,unsigned char* pdata1,int scanlinesize2,unsigned char* pdata2);
+extern ORDEREDDITHER4 ordereddither4;
+
+// ordered dither utility
+//     line by line process
+// INPUT
+//   int            y;               line no(0,...height - 1)
+typedef int (__stdcall* ORDEREDDITHERLINE2)(int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+extern ORDEREDDITHERLINE2 orderedditherline2;
+
+typedef int (__stdcall* ORDEREDDITHERLINE4)(int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+#extern ORDEREDDITHERLINE4 orderedditherline4;
+</pre>
+
+<pre>
+// 1...組織的ディザリングユーティリティ
+// 　グレイスケールイメージに対する組織的ディザリングを実行する
+// 　マルチプレーン画像(ex. RGB,CMYK)を対象とした組織的ディザリングは、C++クラスライブラリでサポートしている。
+//   マルチプレーン画像に対しては、クラスライブラリを使うか、本ライブラリのAPIを拡張する必要がある。
+// 入力
+//	int				width;			画像の幅(pixel)
+//	int				height;			画像の高さ(pixel)
+//	int				scanlinesize1;	pdata1のスキャンラインサイズ(byte)　一行の画像のバイト数
+//	unsigned char*	pdata1;			256階調画像(1ピクセル1バイト)
+//	int				scanlinesize2;	pdata2のスキャンラインサイズ(byte)　一行の画像のバイト数
+// output
+//  unsigned char*	pdata2;			2 あるいは 4 階調画像(1ピクセル1バイト)
+//                                  2 階調の場合は(0/255の2値)
+//                                  4 階調の場合は(0/85/170/255の4値)
+// return value
+//　　負値...エラー(myerrcode.h : INITIALIZE_ERROR...初期化エラー(クラスライブラリのインスタンス作成失敗 : 主にメモリ不足が原因)
+//　　       エラー(myerrcode.h : FILE_OPEN_ERROR....ブルーノイズデータの保存、読込失敗(生成したブルーノイズ数列を書き込めない、読み込めない)
+//                 (myerrcode.h : MEMORY_SHORTAGE....メモリ不足)
+// 本ライブラリは、setbluenoisematrix()APIで指定したフォルダに"sizexsizeraw.dat"というファイル名でファイルを保存/読込する。 
+//                   たとえば"size"が1024の場合、ファイル名は"1024x1024raw.dat"
+//                   ファイルが無い場合、setbluenoisematrix()内部で自動的にブルーノイズを作成して"sizexsizeraw.dat"というファイル名で保存する
+//                   "size"の値が大きいほど、ディザリングの画質は良くなる
+typedef int (__stdcall* ORDEREDDITHER2)(int width,int height,int scanlinesize1,unsigned char* pdata1,int scanlinesize2,unsigned char* pdata2);
+extern ORDEREDDITHER2 ordereddither2;
+
+typedef int (__stdcall* ORDEREDDITHER4)(int width,int height,int scanlinesize1,unsigned char* pdata1,int scanlinesize2,unsigned char* pdata2);
+extern ORDEREDDITHER4 ordereddither4;
+
+// 組織的ディザリング
+//     1行単位でディザリング(プリンタドライバ中で1行ずつディザリングするなど)
+// 入力
+//   int            y;               行番号(0～height - 1)
+typedef int (__stdcall* ORDEREDDITHERLINE2)(int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+extern ORDEREDDITHERLINE2 orderedditherline2;
+
+typedef int (__stdcall* ORDEREDDITHERLINE4)(int width,int y,unsigned char* pdata1,unsigned char* pdata2);
+#extern ORDEREDDITHERLINE4 orderedditherline4;
+</pre>
+
+<br />
+サンプルプログラム<br />
+<pre>
+int				width = mppimage[0]->mgetrawwidth();                    // 元の256階調グレイスケールイメージの幅(ピクセル)
+int				height = mppimage[0]->mgetrawheight();                  // 元の256階調グレイスケールイメージの高さ(ピクセル)
+int				scanlinesize = mppimage[0]->mgetrawscanlinesize();      // 元の256階調グレイスケールイメージのスキャンラインサイズ(バイト)
+unsigned char*	pdata1 = mppimage[0]->mgetrawdata();                    // 元の256階調グレイスケールイメージ(scanlinesize * heightバイト)
+unsigned char*	pdata2 = (unsigned char*)malloc(scanlinesize * height); // 2/4階調ディザリンググレイスケールイメージ(scanlinesize * heightバイト)
+                                                                        // 2階調の場合、輝度値は0/255
+                                                                        // 4階調の場合、輝度値は0/85/170/255
+if(pdata2 != NULL) {
+	ordereddither2(0,width,height,scanlinesize,pdata1,scanlinesize,pdata2);
+	free(pdata2);
+}
+</pre>
+ライン処理のサンプルプログラム<br />
+<pre>
+int				width = mppimage[0]->mgetrawwidth();                    // 元の256階調グレイスケールイメージの幅(ピクセル)
+int				height = mppimage[0]->mgetrawheight();                  // 元の256階調グレイスケールイメージの高さ(ピクセル)
+int				scanlinesize = mppimage[0]->mgetrawscanlinesize();      // 元の256階調グレイスケールイメージのスキャンラインサイズ(バイト)
+unsigned char*	pdata1 = mppimage[0]->mgetrawdata();                    // 元の256階調グレイスケールイメージ(scanlinesize * heightバイト)
+unsigned char*	pdata2 = (unsigned char*)malloc(scanlinesize * height); // 2/4階調ディザリンググレイスケールイメージ(scanlinesize * heightバイト)
+                                                                        // 2階調の場合、輝度値は0/255
+                                                                        // 4階調の場合、輝度値は0/85/170/255
+if(pdata2 != NULL) {
+    for(int i = 0 ; i < height ; i++) {
+	    unsigned char* ps1 = pdata1 + i * scanlinesize;
+	    unsigned char* ps2 = pdata2 + i * scanlinesize;
+	    orderedditherline4(0,width,i,ps1,ps2);
+    }
+	free(pdata2);
+}
+</pre>
+</body>
+</html>

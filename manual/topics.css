@@ -1,0 +1,162 @@
+﻿@charset "UTF-8";
+/* HTML */
+html {
+scroll-behavior: smooth;
+}
+/* ボディー */
+body {
+font-size: 18px;
+margin: 0;
+}
+/* ヘッダー */
+.header{
+    z-index: 10;
+    height: 64px;
+    position: absolute;
+/*    top: 300px;       */
+    background-color: #333;
+    width: 100%;
+    text-align: left;
+    z-index: 2;
+    box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.25);
+}
+
+.header ul {
+    overflow:hidden;
+    list-style:none;
+    margin: 0 auto;
+    z-index: 20;
+}
+
+.header ul li {
+    display: inline-block;
+    padding: 26px 10px 20px 10px;
+}
+
+
+.header a {
+color: white;
+padding: 5px 10px;
+margin: 0 3px;
+border: solid 1px white;
+border-radius: 10px;
+transition: all .5s;
+}
+.header a:hover {
+background: white;
+color: #2a5c84;
+}
+/* メイン */
+.main {
+background: #white;
+padding: 100px 10px 0 10px;
+/* padding: 10px 0 40px 0; */
+}
+/*
+.main h1 {
+color: black;
+text-align: left;
+margin: 40px 0;
+}
+*/
+
+.main h1 {
+  padding: 1rem 3rem;
+  color: #fff;
+  border-radius: 100vh;
+  background-image: -webkit-gradient(linear, right top, left top, from(#9be15d), to(#00e3ae));
+  background-image: -webkit-linear-gradient(right, #9be15d 0%, #00e3ae 100%);
+  background-image: linear-gradient(to left, #9be15d 0%, #00e3ae 100%);
+}
+
+.main h2 {
+color: black;
+text-align: left;
+margin: 40px 0;
+}
+
+.main ul,ol {
+  background: #fffcf4;
+  border-radius :8px;
+  box-shadow :0px 0px 5px silver;
+  padding: 0.5em 0.5em 0.5em 2em;
+}
+
+.main ul li {
+  line-height: 1.5;
+  padding: 0.5em 0;
+}
+
+
+/*
+.main ol {
+  counter-reset:list;
+  list-style-type:none;
+  font: 14px/1.6 'arial narrow', sans-serif;
+  padding: 1.5em;
+}
+*/
+.main ol li{
+  position:relative;
+  padding: 7px 5px 7px 40px;
+  margin: 7px 0 10px 30px;
+  font-weight: bold;
+  font-size:18px;
+  border-bottom:dashed 1px #F6A38B;
+}
+
+.mokuji {
+background: white;
+width: 250px;
+margin: 30px auto;
+padding: 10px;
+border-radius: 10px;
+}
+.mokuji h3 {
+text-align: center;
+margin: 0;
+}
+.mokuji ul {
+margin: 10px 0;
+}
+.mokuji a {
+transition: all .5s;
+}
+.mokuji a:hover {
+color: orange;
+}
+.contents {
+background: white;
+width: 80%;
+margin: 0 auto;
+padding: 10px;
+border-radius: 10px;
+}
+.contents p {
+padding-left: 5px;
+border-left: solid 10px #2da9af;
+}
+.contents b {
+color: orangered;
+}
+.contents ol {
+margin: 10px 0;
+}
+.circle {
+width: 20px;
+margin: 40px auto;
+}
+.circle div {
+background: white;
+width: 20px;
+height: 20px;
+margin-bottom: 10px;
+border-radius: 100%;
+}
+/* フッター */
+.footer {
+background: #f76560;
+color: white;
+text-align: center;
+padding: 10px 0;
+}
